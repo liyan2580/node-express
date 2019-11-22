@@ -20,4 +20,4 @@ mongoose
         console.log(error)
     })
     // 4.将已经链接到mongodb模块给暴露出去在其他位置使用
-    module.exports = mongoose
+    module.exports = mongoose;

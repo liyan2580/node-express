@@ -1,65 +1,47 @@
 const express = require('express')
-const app = express();
+const app = express()
 
-const PostModel = require('./models/post');
+const path = require('path')
+const session = require('express-session')
+
+
+
+//引入拆分出去的路径模块
+const postRouter = require('./routes/post')
+const userRouter = require('./routes/user')
+
+
+// const postRouter = require('./rotues/post')
+// const userRouter = require('./rotues/user')
+
+//使用ejs模板引擎，模板页面的存放路径，ejs不需要引包
+app.set('view engine', 'ejs')
+app.set('views', path.resolve(__dirname, './views'))//_dirname处理绝对路径，需要引入path包
+
 
 //req.body中间件的设置
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-//新增文章
-app.post('/api/posts', async (req, res) => {
-    // 1.获取前端传过来的参数 req.body
-
-    // 2.写入数据库
-    const post = new PostModel(req.body)//需要设置中间件
-    try {
-        const data = await post.save()
-        console.log(data)
-
-        res.send({
-            code: 0,
-            msg: 'ok'
-        })
-    } catch (error) {
-        console.log(error)
-        res.send({
-            code: -1,
-            msg: '错了'
-        })
-
-    }
-})
-
-//查询文章
-app.get('/api/posts', async (req, res) => {
-    // 1.取出前端传过来的参数
-    let pageNum = parseInt(req.query.pageNum) || 1//请求第几页
-    let pageSize = parseInt(req.query.pageSize) || 10//一页显示几条数据
-    let title = req.query.title;
-
-    // 2.获取文章列表
-    const posts = await PostModel.find({ title: new RegExp(title) })
-        .skip((pageNum - 1) * pageSize)
-        .limit(pageSize)
+~
+//静态资源托管的设置
+app.use(express.static(path.resolve(__dirname, './public')))
 
 
-    // 3.获取文章总条数
-    const count = await PostModel.find({
-        title: new RegExp(title)
-    }).countDocuments()
+// 、、设置session相关的中间件
+app.use(
+    session({
+        resave: true,
+        saveUninitialized: true,
+        secret: 'dsfewreefrfd',//随便写点什么就可以
 
-    // 4.响应前端
-    res.send({
-        code:0,
-        msg:'ok',
-        data:{
-            list:posts,
-            count
+        cookie: {
+            maxAge: 60 * 1000 * 2
         }
     })
-})
-
+)
+app.use(postRouter);
+app.use(userRouter);
 
 app.listen(8080)
 console.log('服务已启动')
