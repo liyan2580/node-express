@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>登录</title>
+    <title>Document</title>
     <link
       rel="stylesheet"
       href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css"
@@ -14,8 +14,7 @@
     <div class="container">
       <h1 class="mt-5 mb-5">登录</h1>
 
-      
-      <form action="/loginAction" method="POST">
+      <form action="/loginAction?redirect=<%= redirect %>" method="POST">
         <div class="form-group">
           <label for="username">Username</label>
           <input
@@ -34,7 +33,7 @@
             class="form-control"
           />
         </div>
-        <button type="submit" class="btn btn-primary">登录</button>
+        <button type="submit" class="btn btn-primary">Login</button>
       </form>
     </div>
   </body>

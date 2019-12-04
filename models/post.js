@@ -14,15 +14,23 @@ const schema = new mongoose.Schema({
   body: {
     type: String,
     required: true
-  } // 文章正文
-})
+  }, // 文章正文
+  user:{
+    type:String,
+    required:true
+  },
+  picture:{
+    type:String,
+    required:true
+  }
+});
 
 // 3. 通过 mongoose.model() 生成当前 post 的model
 //    第一个参数，是我们的表名的单数形式
-const model = mongoose.model('post', schema)
+const model = mongoose.model('post', schema);
 
 // 4. 暴露出去
-module.exports = model
+module.exports = model;
 
 
 

@@ -1,155 +1,95 @@
-// 这里专门处理和文章相关的路由
+const express = require('express');
+const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const upload = multer({ dest: './uploads' });
 
-// 1.引入express
-// const express = require('exrepss');???
-const express = require('express')
+const PostModel = require('../models/post');
+const UserModel = require('../models/user');
 
-// 2.创建一个router对象
-const router = express.Router()
+//文章列表页面
+router.get('/', async (req, res) => {
+    // 1.获取分页的参数
+    let pageNum = parseInt(req.query.pageNum) || 1;
+    let pageSize = parseInt(req.query.pageSize) || 5;
 
-const PostModel = require('../models/post')
-const auth = require('../middlewares/auth')
+    //1.获取数据
+    const _posts = await PostModel.find()
+        .skip((pageNum - 1) * pageSize)
+        .limit(pageSize)
+        .sort({ _id: -1 });//使最新添加的文章显示在最前面
 
+    let posts = [];
+    _posts.forEach(async post => {
+        let obj = JSON.parse(JSON.stringify(post));
 
-// 3.在router对象上处理路由的请求
+        // 1.取出每篇文章的用户Id
+        let userId = post.user;
 
-//新增文章
-router.post('/api/posts', async (req, res) => {
-    // 1.获取前端传递过来的参数 req.body
-    //2.写入数据库中
-    const post = new PostModel(req.body)
-    try {
-        const data = await post.save()
-        console.log(data)
+        //2.根据这个用户id去获取相应的用户信息
+        let user = await UserModel.findById(userId);
+        obj.user = user;
+        posts.push(obj);
+    });
 
-        res.send({
-            code: 0,
-            mag: 'ok'
-        })
+    // 获取总条数
+    const count = await PostModel.find().countDocuments();
 
-    } catch (error) {
-        console.log(error)
-        res.send({
-            code: -1,
-            msg: '错了'
-        })
-    }
+    // 根据总条数算出总页数
+    const totalPages = Math.ceil(count / pageSize);
+
+    console.log(posts);
+
+    res.render("post/index", { posts, totalPages, pageNum });
+});
+
+//文章新增页面
+router.get('/create', async (req, res) => {
+    res.render('post/create');
+});
+
+// 文章新增处理
+router.post('/store', upload.single('picture'), async (req, res) => {
+    //1.将临时文件放到lublic目录下
+
+    //1.1 使用fs.readFlieSync()读取文件
+    const fileData = fs.readFileSync(
+        path.resolve(__dirname, '../uploads/', req.file.filename)
+    )
+
+    // 1.2 构建一个路径，public 目录下的路径
+    const filename = new Date().getTime() + "-" + req.file.originalname;
+    const filePath = path.resolve(__dirname, "../public/", filename);
+
+    //1.3写文件
+    fs.writeFileSync(filePath, fileData);
+
+    //2将上传的；=路径的设置到当前文章的picture属性上
+    let body = {
+        ...req.body,
+        user: req.userInfo.userId,
+        picture: `http://localhost:8080/${filename}`
+    };
+
+    const post = new PostModel(body);
+    await post.save();
+
+    // 3.回到文章列表页
+    res.redirect('/posts');
 });
 
 
-// 查询文章
-//查询文章
-router.get('/api/posts', async (req, res) => {
-    // 1.取出前端传过来的参数
-    let pageNum = parseInt(req.query.pageNum) || 1//请求第几页
-    let pageSize = parseInt(req.query.pageSize) || 10//一页显示几条数据
-    let title = req.query.title;
-
-    // 2.获取文章列表
-    const posts = await PostModel.find({ title: new RegExp(title) })
-        .skip((pageNum - 1) * pageSize)
-        .limit(pageSize)
 
 
-    // 3.获取文章总条数
-    const count = await PostModel.find({
-        title: new RegExp(title)
-    }).countDocuments()
-
-    // 4.响应前端
-    res.send({
-        code: 0,
-        msg: 'ok',
-        data: {
-            list: posts,
-            count
-        }
-    })
-})
-
-
-//删除文章
-router.delete('/api/posts/:id', async (req, res) => {
-    // 1.取出需要删除文章的id名
-    let id = req.params.id;
-
-    // 2.删除
-    await PostModel.deleteOne({ _id: id })//deleteOne传的是一个对象不能直接写(id)
-
-    // 3.响应
-    res.send({
-        code: 0,
-        msg: 'ok'
-    })
-})
-
-
-//修改文章
-router.put('/api/posts/:id/updata', async (req, res) => {
-    // 1.取出需要删除的文章
-    let id = req.params.id
-
-    // 2.取出需要修改文章
-    let title = req.body.title
-
-    // await PostModel.updateOne({ _id: id }, { title: title })
-    await PostModel.updateOne({ _id: id }, req.body)
-    // 3.响应
-    res.send({
-        code: 0,
-        msg: 'ok'
-    })
-})
-
-//文章列表页面
-router.get('/posts', auth, async (req, res) => {
-
-    //获取分页的参数
-    let pageNum = parseInt(req.query.pageNum) || 1
-    let pageSize = parseInt(req.query.pageSize) || 5
-
-    // 获取数据
-    const posts = await PostModel.find()
-        .skip((pageNum - 1) * pageSize)
-        .limit(pageSize)
-        .sort({ _id: -1 });//使新增加的文章排在最前面
-
-    // 获取总条数
-    const count = await PostModel.find().countDocuments()
-
-    //根据总条数算出有多少页
-    const totalPages = Math.ceil(count / pageSize)
-    res.render('post/index', { posts, totalPages, pageNum })
-})
-
-//文章新增页面
-router.get('posts/create', auth, async (req, res) => {
-    res.render('post/create')
-})
-
-//文章现新增处理
-router.post('/posts/store', auth, async (req, res) => {
-    // 1.从前端传递过来的参数
-    // 2。写入数据库
-    const post = new PostModel(req.body)
-    await post.save()
-
-    // 3.回到文章列表页
-    res.redirect('/posts')
-})
-
-
-
-//文章详情页面
-router.get('/posts/:id', auth, async (req, res) => {
+//文章详情页
+router.get('/:id', async (req, res) => {
     // 1.获取文章id
     let id = req.params.id;
+
     // 2.查询数据
-    const post = await PostModel.finOne({ _id: id });
-    console.log(post)
-
+    const post = await PostModel.findOne({ _id: id });
+    console.log(post);
     res.render('post/show', { post });
-})
-
-// 将这个router对象给传出去供其他地方使用
-module.exports = router
+});
+module.exports = router;
